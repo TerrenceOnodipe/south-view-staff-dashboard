@@ -60,14 +60,7 @@ img { max-width: 100%; display: block; }
 .wordmark-main { font-family: var(--serif); font-style: italic; font-weight: 600; font-size: 1.9rem; }
 .wordmark-sub { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; margin-top: 2px; }
 
-.site-header nav { display: flex; gap: 28px; flex: 1; }
-.site-header nav a {
-  text-decoration: none;
-  color: var(--nav);
-  font-weight: 500;
-  font-size: 1.05rem;
-}
-.site-header nav a.active { text-decoration: underline; text-underline-offset: 6px; }
+.site-header > .button { margin-left: auto; }
 
 /* Buttons */
 .button {
@@ -235,7 +228,6 @@ select {
 
 @media (max-width: 760px) {
   .site-header { flex-wrap: wrap; gap: 12px 20px; padding: 14px 16px; }
-  .site-header nav { order: 3; flex-basis: 100%; gap: 20px; }
   .site-header .button { margin-left: auto; padding: 8px 14px; }
   .review-card { grid-template-columns: 1fr; }
   .sign { padding: 28px 20px; }
