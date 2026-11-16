@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   addEvent,
   checkAI,
@@ -16,6 +16,7 @@ import {
 import { MAX_DETAILS_LENGTH, MAX_EVENT_NAME_LENGTH, cleanEventName, isShownToday } from '../data/events'
 import { useEvents } from '../events'
 import { AiCheckPanel, Photo, formatDate } from '../components'
+import QrSign from './QrSign'
 
 const TABS = [
   { status: 'pending', label: 'Pending review' },
@@ -99,7 +100,10 @@ function GoogleGate({ onUnlock }) {
 
 function ReviewQueue({ onLocked }) {
   const [items, setItems] = useState([])
-  const [tab, setTab] = useState('pending')
+  // The open tab lives in the URL (#/staff?tab=qr), so the QR code buttons can link to it.
+  const [params, setParams] = useSearchParams()
+  const tab = params.get('tab') || 'pending'
+  const setTab = (next) => setParams(next === 'pending' ? {} : { tab: next })
   const [error, setError] = useState(null)
   const [confirmReset, setConfirmReset] = useState(false)
 
@@ -168,7 +172,7 @@ function ReviewQueue({ onLocked }) {
 
   return (
     <section className="section">
-      <div className="staff-head">
+      <div className="staff-head no-print">
         <h1>Staff Review</h1>
         {isDemo && (
           <button className={confirmReset ? 'button button-danger' : 'button button-outline'} onClick={handleReset}>
@@ -177,7 +181,7 @@ function ReviewQueue({ onLocked }) {
         )}
       </div>
 
-      <div className="tabs">
+      <div className="tabs no-print">
         {TABS.map((t) => (
           <button key={t.status} className={tab === t.status ? 'tab active' : 'tab'} onClick={() => setTab(t.status)}>
             {t.label} <span>{items.filter((i) => i.status === t.status).length}</span>
@@ -189,12 +193,16 @@ function ReviewQueue({ onLocked }) {
         <button className={tab === 'burial' ? 'tab active' : 'tab'} onClick={() => setTab('burial')}>
           Burials <span>{activeBurials.length}</span>
         </button>
+        <button className={tab === 'qr' ? 'tab active' : 'tab'} onClick={() => setTab('qr')}>
+          QR Codes
+        </button>
       </div>
 
-      {error && <p className="error">{error}</p>}
+      {error && <p className="error no-print">{error}</p>}
       {(tab === 'event' || tab === 'burial') && (
         <EventManager key={tab} type={tab} items={items} onError={handleError} />
       )}
+      {tab === 'qr' && <QrSign />}
       {TABS.some((t) => t.status === tab) && shown.length === 0 && <p className="empty">Nothing here right now.</p>}
 
       <div className="review-list">
@@ -314,7 +322,7 @@ function EventManager({ type, items, onError }) {
                 <span>{photoCount(e.id)}</span>
               </div>
               <div className="event-actions">
-                <Link className="button button-outline" to={`/qr?event=${e.id}`}>QR code</Link>
+                <Link className="button button-outline" to={`/staff?tab=qr&event=${e.id}`}>QR code</Link>
                 <button
                   className={confirmId === e.id ? 'button button-danger' : 'button button-outline'}
                   disabled={busy}
@@ -352,7 +360,7 @@ function EventManager({ type, items, onError }) {
       {message && <p className="error">{message}</p>}
       <p className="hint">{text.hint}</p>
       {type === 'burial' && list.length > 0 && (
-        <Link className="button button-outline" to="/qr?labels=burials">Print all burial QR codes</Link>
+        <Link className="button button-outline" to="/staff?tab=qr&labels=burials">Print all burial QR codes</Link>
       )}
     </div>
   )

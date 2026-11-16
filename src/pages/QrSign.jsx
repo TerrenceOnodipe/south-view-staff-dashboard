@@ -8,8 +8,11 @@ const submitUrl = (slug) =>
 
 const qrImage = (slug, width) => QRCode.toDataURL(submitUrl(slug), { width, margin: 1, color: { dark: '#1A1D1A' } })
 
+// The QR Codes tab on the Staff page. Its choices live in the URL (#/staff?tab=qr&event=…),
+// so the QR code buttons on the Events and Burials tabs can link straight to a sign.
 export default function QrSign() {
-  const [params, setParams] = useSearchParams()
+  const [params, setSearchParams] = useSearchParams()
+  const setParams = (next) => setSearchParams({ tab: 'qr', ...next })
   const { activeEvents, activeBurials, status } = useEvents()
   const all = [...activeEvents, ...activeBurials]
   const chosen = all.find((e) => e.id === params.get('event')) ?? all[0]
@@ -26,25 +29,23 @@ export default function QrSign() {
 
   if (!chosen) {
     return (
-      <section className="section narrow center">
-        <h1>QR Codes</h1>
+      <div className="center">
         <p className={status === 'error' ? 'lead error' : 'lead'}>
           {status === 'loading'
             ? 'Loading…'
             : status === 'error'
               ? "The list couldn't load. Check your connection and refresh the page."
-              : 'There are no events or burials yet. Add them on the Staff page.'}
+              : 'There are no events or burials yet. Add them on the Events or Burials tab.'}
         </p>
-      </section>
+      </div>
     )
   }
 
   const burial = chosen.type === 'burial'
 
   return (
-    <section className="section">
+    <div className="qr-tab">
       <div className="qr-controls no-print">
-        <h1>QR Codes</h1>
         <p className="lead">
           Print a sign for the welcome table at an event, or a code to place at a grave. Scanning it opens the photo
           form with this already chosen.
@@ -105,7 +106,7 @@ export default function QrSign() {
           </li>
         </ol>
       </div>
-    </section>
+    </div>
   )
 }
 
@@ -120,9 +121,9 @@ function BurialLabels({ burials, onBack }) {
   }, [burials])
 
   return (
-    <section className="section">
+    <div className="qr-tab">
       <div className="qr-controls no-print">
-        <h1>Burial QR Codes</h1>
+        <h2>Burial QR Codes</h2>
         <p className="lead">
           One code per burial, {burials.length} in all. Print, cut out, and place each one at its grave.
         </p>
@@ -140,8 +141,8 @@ function BurialLabels({ burials, onBack }) {
             <small>Scan to share a photo</small>
           </div>
         ))}
-        {burials.length === 0 && <p className="empty">No burials yet. Add them on the Staff page.</p>}
+        {burials.length === 0 && <p className="empty">No burials yet. Add them on the Burials tab.</p>}
       </div>
-    </section>
+    </div>
   )
 }
