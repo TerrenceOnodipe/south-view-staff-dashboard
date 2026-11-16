@@ -7,6 +7,10 @@
 
 const SHEET_NAME = 'Submissions'
 const EVENTS_SHEET_NAME = 'Events'
+const SETTINGS_SHEET_NAME = 'Settings'
+// The kill switch: two checkboxes in the Settings tab, also on the Staff page's Settings
+// tab. Gallery online hides every photo. Taking photos closes the photo form.
+const SETTINGS = [['galleryOnline', 'Gallery online'], ['takingPhotos', 'Taking photos']]
 const FOLDER_NAME = 'South-View Gallery Photos'
 const HEADERS = ['ID', 'Submitted', 'Event', 'Caption', 'Status', 'Consent', 'AI flagged', 'AI notes', 'Photo', 'File name', 'File ID', 'AI check data', 'Shown until', 'Focus']
 const REQUIRED_COLUMNS = ['ID', 'Status', 'File ID']
@@ -50,6 +54,7 @@ function setup() {
   const statusCol = header.indexOf('Status') + 1
   if (sheet.getLastRow() > 1) sheet.getRange(2, statusCol, sheet.getLastRow() - 1).setDataValidation(statusRule())
   eventsSheet()
+  settingsSheet()
 
   // Photos go to the folder in the FOLDER_ID script property. Without one, make a
   // folder next to the Sheet so they're shared and moved together.
@@ -89,8 +94,9 @@ function setupSpreadsheet() {
 function doGet(e) {
   return respond(() => {
     const action = e.parameter.action || 'gallery'
-    if (action === 'events') return { events: readEvents() }
+    if (action === 'events') return { events: readEvents(), settings: readSettings() }
     if (action !== 'gallery') fail('Unknown action.')
+    if (!readSettings().galleryOnline) return { offline: true, photos: [], burialDayPhotos: [] }
     const now = new Date()
     const rows = readRows().filter((r) => r.fileId)
     const photo = (r) => ({ id: r.id, event: r.event, caption: r.caption, submittedAt: r.submittedAt, fileId: r.fileId, focus: r.focus })
@@ -118,6 +124,7 @@ function doPost(e) {
     if (body.action === 'addEvent') return addEvent(body.name, body.type, body.details)
     if (body.action === 'deleteEvent') return deleteEvent(String(body.id))
     if (body.action === 'checkAI') {return { aiCheck: checkPhotoWithGemini(String(body.id)) };}
+    if (body.action === 'setSetting') return setSetting(String(body.key), body.value === true)
     fail('Unknown action.')
   })
 }
@@ -127,6 +134,8 @@ function submit(body) {
   const caption = String(body.caption || '').trim()
   const mimeType = String(body.mimeType || '')
   const image = String(body.image || '')
+  const settings = readSettings()
+  if (!settings.galleryOnline || !settings.takingPhotos) fail("South-View isn't taking photos right now.", 'closed')
   if (!event) fail('Choose an event.')
   const chosen = readEvents().filter((e) => e.id === event)[0]
   if (!chosen || !chosen.active) fail("That event isn't taking photos anymore. Choose another event.")
@@ -252,6 +261,51 @@ function eventsSheet() {
     sheet.getRange(1, header.length + 1, 1, missing.length).setValues([missing]).setFontWeight('bold')
   }
   return sheet
+}
+
+// The Settings tab, made with both switches on the first time it's needed. A tab missing
+// a row gets it added, ticked.
+function settingsSheet() {
+  const ss = openSpreadsheet()
+  let sheet = ss.getSheetByName(SETTINGS_SHEET_NAME)
+  if (!sheet) {
+    sheet = ss.insertSheet(SETTINGS_SHEET_NAME)
+    sheet.appendRow(['Setting', 'Value'])
+    sheet.setFrozenRows(1)
+    sheet.getRange(1, 1, 1, 2).setFontWeight('bold')
+  }
+  const labels = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 1), 1).getValues().map((r) => String(r[0]).trim())
+  SETTINGS.forEach(([, label]) => {
+    if (labels.indexOf(label) >= 0) return
+    sheet.appendRow([label, true])
+    sheet.getRange(sheet.getLastRow(), 2).setDataValidation(checkboxRule())
+  })
+  return sheet
+}
+
+// { galleryOnline, takingPhotos }. A missing tab or row, or a blank cell, counts as on,
+// so a Sheet from before the kill switch keeps working.
+function readSettings() {
+  const sheet = openSpreadsheet().getSheetByName(SETTINGS_SHEET_NAME)
+  const rows = sheet ? sheet.getDataRange().getValues() : []
+  const settings = {}
+  SETTINGS.forEach(([key, label]) => {
+    const row = rows.filter((r) => String(r[0]).trim() === label)[0]
+    settings[key] = row ? isActive(row[1]) : true
+  })
+  return settings
+}
+
+// Staff action from the Staff page's Settings tab.
+function setSetting(key, value) {
+  const setting = SETTINGS.filter(([k]) => k === key)[0]
+  if (!setting) fail('Unknown setting.')
+  withLock(() => {
+    const sheet = settingsSheet()
+    const labels = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues().map((r) => String(r[0]).trim())
+    sheet.getRange(labels.indexOf(setting[1]) + 1, 2).setValue(value)
+  })
+  return { settings: readSettings() }
 }
 
 // Every event and burial, including deleted ones, so older photos can still show

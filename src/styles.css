@@ -126,6 +126,7 @@ img { max-width: 100%; display: block; }
   border-radius: 999px;
 }
 .year-filter { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+.search-hint { margin: -8px 0 18px; font-size: 0.9rem; color: #6b6b6b; }
 .burial-head { margin: -8px 0 28px; }
 .burial-head h2 { margin: 0; }
 .burial-head p { margin: 0 0 12px; color: #6b6b6b; }

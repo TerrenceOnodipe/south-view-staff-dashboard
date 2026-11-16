@@ -124,6 +124,14 @@ account while the live site uses South-View's.
   and Active blank or ticked). A blank Type counts as an event. Each burial gets its own
   QR code (Staff → Burials → **QR code**, or **Print all burial QR codes** for a sheet of
   labels) and its own gallery link, `#/?event=<id>`.
+- QR signs and labels are on the Staff page's **QR Codes** tab (`#/staff?tab=qr`), so
+  only signed-in staff see them. Old `#/qr` links land there. Printed codes point at the
+  photo form, not this page, so they keep working.
+- **Kill switch.** The Sheet's **Settings** tab has two checkboxes, also on the Staff
+  page's **Settings** tab. Untick **Gallery online** to hide every photo (visitors see an
+  offline message). Untick **Taking photos** to close the photo form and QR codes. Tick
+  them again to bring things back. The Sheet works even when nobody can sign in to the
+  Staff page. A missing tab or row counts as on; `setup` creates the tab.
 - Event photos go online only after a staff member approves them. Burial photos are the
   one exception: Gemini checks each one as it's shared, and one that passes shows in the
   gallery's **Burials** view and on that person's page (not in **All photos**) until
@@ -153,7 +161,8 @@ account while the live site uses South-View's.
   account's storage, unless the folder is in a shared drive.
 - If you change the script, paste in the new `Code.gs`, run `setup` again (it adds any
   new columns to the end of the Sheet, such as **Shown until** and **Focus**, the **Type** and
-  **Details** columns to the **Events** tab, and the **Events** tab if it's missing; until
+  **Details** columns to the **Events** tab, and the **Events** and **Settings** tabs if
+  they're missing; until
   it runs, burial photos wait for staff like the rest), then use
   **Deploy → Manage deployments**, click the pencil, choose **Version: New version** and
   **Deploy**. Don't make a *new* deployment: that creates a new URL and the website
@@ -164,10 +173,11 @@ account while the live site uses South-View's.
 
 ## Demo script (about 3 minutes)
 
-1. **Before presenting:** open Staff (PIN `1886`) and click **Reset demo data** twice.
+1. **Before presenting:** open Staff, click **Continue as staff (demo)**, then click
+   **Reset demo data** twice.
 2. **Gallery:** show the photos and filter by event. Point out that Praise House Project
    has no photos yet.
-3. **QR Codes:** pick Praise House Project. Explain that this goes on the welcome table,
+3. **Staff → QR Codes:** pick Praise House Project. Explain that this goes on the welcome table,
    then click **Open the form** (the code works from a phone too, but a phone's
    submissions stay on that phone).
 4. **Submit:** choose a photo, add a caption, check consent and send it.

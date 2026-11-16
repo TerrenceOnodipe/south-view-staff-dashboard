@@ -8,6 +8,8 @@ import { DEFAULT_EVENTS, cleanDetails, cleanEventName, entryId, isShownToday } f
 const db = createStore('south-view-gallery', 'submissions')
 const SEEDED_KEY = '__seeded'
 const EVENTS_KEY = '__events'
+const SETTINGS_KEY = '__settings'
+const SETTINGS_ON = { galleryOnline: true, takingPhotos: true }
 const UNLOCK_KEY = 'south-view-staff-unlocked'
 
 async function ensureSeeded() {
@@ -26,6 +28,7 @@ export async function listAll() {
 
 // Approved photos, plus burial photos still within the day they were shared. Newest first.
 export async function listGallery() {
+  if (!(await readSettings()).galleryOnline) return []
   return (await listAll()).filter((r) => r.status === 'approved' || (r.status === 'pending' && isShownToday(r)))
 }
 
@@ -33,6 +36,10 @@ export async function listGallery() {
 // submit() in apps-script/Code.gs. The demo uses this browser's midnight, not Atlanta's.
 export async function addSubmission(record) {
   await ensureSeeded()
+  const settings = await readSettings()
+  if (!settings.galleryOnline || !settings.takingPhotos) {
+    throw Object.assign(new Error("South-View isn't taking photos right now."), { code: 'closed' })
+  }
   const entry = (await listEvents()).find((e) => e.id === record.event)
   const now = new Date()
   const shownUntil =
@@ -47,6 +54,21 @@ export async function addSubmission(record) {
 export async function setStatus(id, status) {
   const record = await get(id, db)
   if (record) await set(id, { ...record, status, shownUntil: '' }, db)
+}
+
+// The kill switch, like the Settings tab in apps-script/Code.gs.
+async function readSettings() {
+  return { ...SETTINGS_ON, ...(await get(SETTINGS_KEY, db)) }
+}
+
+export async function loadEvents() {
+  return { events: await listEvents(), settings: await readSettings() }
+}
+
+export async function setSetting(key, value) {
+  const next = { ...(await readSettings()), [key]: value }
+  await set(SETTINGS_KEY, next, db)
+  return next
 }
 
 export async function listEvents() {

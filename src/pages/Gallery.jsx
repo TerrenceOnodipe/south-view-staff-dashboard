@@ -10,6 +10,26 @@ const BURIALS = 'burials'
 const yearOf = (p) => String(new Date(p.submittedAt).getFullYear())
 const PAGE_SIZE = 50
 
+// A search word typed as a number date: 6/20, 6/20/26, 6-20-2026 or 2026-06-20. Returns
+// { month, day, year } (year is null when left out), or null for any other word.
+function numberDate(word) {
+  let m = word.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  const [month, day, year] = m
+    ? [m[2], m[3], m[1]]
+    : (m = word.match(/^(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2}|\d{4}))?$/)) ? [m[1], m[2], m[3]] : []
+  if (!month || month < 1 || month > 12 || day < 1 || day > 31) return null
+  return { month: Number(month), day: Number(day), year: year ? Number(year.length === 2 ? `20${year}` : year) : null }
+}
+
+function sharedOn(p, date) {
+  const shared = new Date(p.submittedAt)
+  return (
+    shared.getMonth() + 1 === date.month &&
+    shared.getDate() === date.day &&
+    (date.year == null || shared.getFullYear() === date.year)
+  )
+}
+
 // Splits photos, already newest first, into one group per day they were shared.
 function byDay(photos) {
   const groups = []
@@ -23,7 +43,7 @@ function byDay(photos) {
 }
 
 export default function Gallery() {
-  const { events, entry, eventName } = useEvents()
+  const { events, entry, eventName, settings } = useEvents()
   const [params, setParams] = useSearchParams()
   const [photos, setPhotos] = useState([])
   const [loading, setLoading] = useState('loading')
@@ -90,12 +110,16 @@ export default function Gallery() {
     .sort((a, b) => a.name.localeCompare(b.name))
 
   // Every word has to appear somewhere in the caption, name, burial details or the date it
-  // was shared, so "october" or "2026" finds photos by date.
+  // was shared, so "october" or "2026" finds photos by date. A number date like 6/20 is
+  // compared to the shared date itself, so 1/4 doesn't match 11/4.
   const words = query.toLowerCase().split(/\s+/).filter(Boolean)
   const matches = (p) => {
     const e = entry(p.event)
     const text = `${p.caption} ${e?.name ?? ''} ${e?.details ?? ''} ${formatDate(p.submittedAt)}`.toLowerCase()
-    return words.every((w) => text.includes(w))
+    return words.every((w) => {
+      const date = numberDate(w)
+      return date ? sharedOn(p, date) : text.includes(w)
+    })
   }
   const inView = filter === 'all' ? approved : filter === BURIALS ? burialPhotos : withToday.filter((p) => p.event === filter)
   const shown = inView.filter(matches)
@@ -129,6 +153,16 @@ export default function Gallery() {
           ? `No photos of ${selected.name} yet.`
           : 'No approved photos here yet.'
 
+  // The kill switch (Staff → Settings, or the Sheet's Settings tab).
+  if (!settings.galleryOnline) {
+    return (
+      <section className="section narrow center">
+        <h1>Community Gallery</h1>
+        <p className="lead">The community gallery is offline right now. Please check back later.</p>
+      </section>
+    )
+  }
+
   return (
     <>
       <section className="hero" style={{ backgroundImage: `url(${import.meta.env.BASE_URL}seed/irises.jpg)` }}>
@@ -144,7 +178,7 @@ export default function Gallery() {
           <input
             type="search"
             className="gallery-search"
-            placeholder="Search by name, event, caption or date"
+            placeholder="Search by event, person, caption or date"
             aria-label="Search photos"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -161,6 +195,7 @@ export default function Gallery() {
             </label>
           )}
         </div>
+        <p className="search-hint">Try a month, a year or a date, like June, 2026 or 6/20/2026.</p>
 
         <div className="chips" role="tablist" aria-label="Filter photos">
           <button className={filter === 'all' ? 'chip active' : 'chip'} onClick={() => setFilter('all')}>

@@ -1,11 +1,18 @@
 import { useEffect } from 'react'
-import { NavLink, Link, Route, Routes, useLocation } from 'react-router-dom'
+import { NavLink, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Gallery from './pages/Gallery'
 import Submit from './pages/Submit'
 import Staff from './pages/Staff'
-import QrSign from './pages/QrSign'
 import { isDemo } from './data/store'
 import { EventsProvider } from './events'
+
+// QR Codes moved to a tab on the Staff page. Old links to #/qr still land there.
+function QrRedirect() {
+  const { search } = useLocation()
+  const params = new URLSearchParams(search)
+  params.set('tab', 'qr')
+  return <Navigate to={`/staff?${params}`} replace />
+}
 
 export default function App() {
   const { pathname } = useLocation()
@@ -23,7 +30,6 @@ export default function App() {
         </Link>
         <nav>
           <NavLink to="/" end>Gallery</NavLink>
-          <NavLink to="/qr">QR Codes</NavLink>
           <NavLink to="/staff">Staff</NavLink>
         </nav>
         <Link to="/submit" className="button">Share a Photo</Link>
@@ -33,7 +39,7 @@ export default function App() {
           <Route path="/" element={<Gallery />} />
           <Route path="/submit" element={<Submit />} />
           <Route path="/staff" element={<Staff />} />
-          <Route path="/qr" element={<QrSign />} />
+          <Route path="/qr" element={<QrRedirect />} />
           <Route path="*" element={<Gallery />} />
         </Routes>
       </main>

@@ -77,9 +77,23 @@ export async function checkAI(id) {
   return aiCheck
 }
 
+// The kill switch. A script from before it sends no settings, which counts as both on.
+const SETTINGS_ON = { galleryOnline: true, takingPhotos: true }
+
+// Events and burials, plus the kill switch settings, in one request.
+export async function loadEvents() {
+  const { events, settings } = await fetch(`${API_URL}?action=events`).then(parse)
+  return { events, settings: { ...SETTINGS_ON, ...settings } }
+}
+
 export async function listEvents() {
-  const { events } = await fetch(`${API_URL}?action=events`).then(parse)
-  return events
+  return (await loadEvents()).events
+}
+
+// key is galleryOnline or takingPhotos. Returns the settings after the change.
+export async function setSetting(key, value) {
+  const { settings } = await post({ action: 'setSetting', key, value, idToken: sessionStorage.getItem(TOKEN_KEY) })
+  return { ...SETTINGS_ON, ...settings }
 }
 
 export async function addEvent(name, type = 'event', details = '') {
