@@ -77,6 +77,8 @@ When adding one:
 ## Link to App Scripts (Test)
 DO NOT DELETE EXISTING APPSCRIPTS CODE, just ADD ONTO IT
 
+- [App Scripts Code](https://script.google.com/home/projects/1gBNBghQlEIAateXLMSzfpVEQllFgJgJSR-8w9D0ZRFcldxRVzGlimjzX/edit)
+
 * Note: We will make Charlene set this up (one time set up) with SouthView's google account
 
 History before the split is the gallery's, kept on purpose so past changes are still
