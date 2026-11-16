@@ -3,5 +3,5 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/south-view-events-gallery/',
+  base: '/south-view-staff-dashboard/',
 })
