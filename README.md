@@ -74,5 +74,10 @@ When adding one:
 - Keep each project's data and backend where it is. This dashboard only needs that
   project's API or links.
 
+## Link to App Scripts (Test)
+DO NOT DELETE EXISTING APPSCRIPTS CODE, just ADD ONTO IT
+
+* Note: We will make Charlene set this up (one time set up) with SouthView's google account
+
 History before the split is the gallery's, kept on purpose so past changes are still
 traceable.
