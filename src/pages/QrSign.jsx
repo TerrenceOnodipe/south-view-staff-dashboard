@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { useEvents } from '../events'
+import { GALLERY_URL } from '../data/store'
 
-const submitUrl = (slug) =>
-  `${window.location.origin}${import.meta.env.BASE_URL}#/submit?event=${slug}`
+// Codes open the gallery's photo form, so they match the ones printed from the gallery.
+const submitUrl = (slug) => `${GALLERY_URL}#/submit?event=${slug}`
 
 const qrImage = (slug, width) => QRCode.toDataURL(submitUrl(slug), { width, margin: 1, color: { dark: '#1A1D1A' } })
 
-// The QR Codes tab on the Staff page. Its choices live in the URL (#/staff?tab=qr&event=…),
+// The QR Codes tab on the Staff page. Its choices live in the URL (#/?tab=qr&event=…),
 // so the QR code buttons on the Events and Burials tabs can link straight to a sign.
 export default function QrSign() {
   const [params, setSearchParams] = useSearchParams()
@@ -72,7 +73,7 @@ export default function QrSign() {
           {png && (
             <a className="button button-outline" href={png} download={`south-view-qr-${chosen.id}.png`}>Download QR image</a>
           )}
-          <Link className="button button-outline" to={`/submit?event=${chosen.id}`}>Open the form</Link>
+          <a className="button button-outline" href={submitUrl(chosen.id)} target="_blank" rel="noreferrer">Open the form</a>
           {activeBurials.length > 0 && (
             <button className="button button-outline" onClick={() => setParams({ labels: 'burials' })}>
               Print all burial codes

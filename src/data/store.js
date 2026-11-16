@@ -5,6 +5,9 @@ import * as sheet from './sheetStore'
 // (see apps-script/). Without it, the app runs as the in-browser demo.
 export const isDemo = !import.meta.env.VITE_APPS_SCRIPT_URL
 
+// The public gallery, where visitors share photos. QR codes point at its photo form.
+export const GALLERY_URL = import.meta.env.VITE_GALLERY_URL || 'https://svc-handoff.github.io/south-view-events-gallery/'
+
 export const {
   listGallery,
   listAll,

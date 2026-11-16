@@ -101,7 +101,7 @@ function GoogleGate({ onUnlock }) {
 
 function ReviewQueue({ onLocked }) {
   const [items, setItems] = useState([])
-  // The open tab lives in the URL (#/staff?tab=qr), so the QR code buttons can link to it.
+  // The open tab lives in the URL (#/?tab=qr), so the QR code buttons can link to it.
   const [params, setParams] = useSearchParams()
   const tab = params.get('tab') || 'pending'
   const setTab = (next) => setParams(next === 'pending' ? {} : { tab: next })
@@ -407,7 +407,7 @@ function EventManager({ type, items, onError }) {
                 <span>{photoCount(e.id)}</span>
               </div>
               <div className="event-actions">
-                <Link className="button button-outline" to={`/staff?tab=qr&event=${e.id}`}>QR code</Link>
+                <Link className="button button-outline" to={`/?tab=qr&event=${e.id}`}>QR code</Link>
                 <button
                   className={confirmId === e.id ? 'button button-danger' : 'button button-outline'}
                   disabled={busy}
@@ -445,7 +445,7 @@ function EventManager({ type, items, onError }) {
       {message && <p className="error">{message}</p>}
       <p className="hint">{text.hint}</p>
       {type === 'burial' && list.length > 0 && (
-        <Link className="button button-outline" to="/staff?tab=qr&labels=burials">Print all burial QR codes</Link>
+        <Link className="button button-outline" to="/?tab=qr&labels=burials">Print all burial QR codes</Link>
       )}
     </div>
   )
