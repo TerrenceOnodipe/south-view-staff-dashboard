@@ -43,7 +43,7 @@ function byDay(photos) {
 }
 
 export default function Gallery() {
-  const { events, entry, eventName } = useEvents()
+  const { events, entry, eventName, settings } = useEvents()
   const [params, setParams] = useSearchParams()
   const [photos, setPhotos] = useState([])
   const [loading, setLoading] = useState('loading')
@@ -152,6 +152,16 @@ export default function Gallery() {
         : selected?.type === 'burial'
           ? `No photos of ${selected.name} yet.`
           : 'No approved photos here yet.'
+
+  // The kill switch (Staff → Settings, or the Sheet's Settings tab).
+  if (!settings.galleryOnline) {
+    return (
+      <section className="section narrow center">
+        <h1>Community Gallery</h1>
+        <p className="lead">The community gallery is offline right now. Please check back later.</p>
+      </section>
+    )
+  }
 
   return (
     <>

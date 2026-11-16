@@ -10,7 +10,7 @@ const MAX_PHOTOS = 5
 
 export default function Submit() {
   const [params] = useSearchParams()
-  const { activeEvents, activeBurials, status: eventsStatus } = useEvents()
+  const { activeEvents, activeBurials, status: eventsStatus, settings } = useEvents()
 
   const [event, setEvent] = useState(params.get('event') ?? '')
   // A QR code already says where the photos are from, so the dropdown stays hidden.
@@ -121,6 +121,16 @@ export default function Submit() {
   }
 
   const sending = state === 'sending'
+
+  // The kill switch (Staff → Settings, or the Sheet's Settings tab).
+  if (!settings.galleryOnline || !settings.takingPhotos) {
+    return (
+      <section className="section narrow center">
+        <h1>Share a Photo</h1>
+        <p className="lead">South-View isn't taking photos right now. Please check back later.</p>
+      </section>
+    )
+  }
 
   return (
     <section className="section narrow">

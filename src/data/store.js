@@ -11,6 +11,8 @@ export const {
   addSubmission,
   setStatus,
   listEvents,
+  loadEvents,
+  setSetting,
   addEvent,
   deleteEvent,
   unlockStaff,

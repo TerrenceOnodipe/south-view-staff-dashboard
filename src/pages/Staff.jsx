@@ -10,6 +10,7 @@ import {
   listEvents,
   lockStaff,
   resetDemo,
+  setSetting,
   setStatus,
   unlockStaff,
 } from '../data/store'
@@ -107,7 +108,7 @@ function ReviewQueue({ onLocked }) {
   const [error, setError] = useState(null)
   const [confirmReset, setConfirmReset] = useState(false)
 
-  const { eventName, entry, activeEvents, activeBurials, setEvents } = useEvents()
+  const { eventName, entry, activeEvents, activeBurials, setEvents, setSettings } = useEvents()
   const handleError = useCallback(
     (err) => (err.code === 'unauthorized' ? onLocked() : setError(err.message || 'Something went wrong.')),
     [onLocked],
@@ -166,6 +167,7 @@ function ReviewQueue({ onLocked }) {
     setTab('pending')
     refresh()
     setEvents(await listEvents())
+    setSettings({ galleryOnline: true, takingPhotos: true })
   }
 
   const shown = items.filter((i) => i.status === tab)
@@ -196,6 +198,9 @@ function ReviewQueue({ onLocked }) {
         <button className={tab === 'qr' ? 'tab active' : 'tab'} onClick={() => setTab('qr')}>
           QR Codes
         </button>
+        <button className={tab === 'settings' ? 'tab active' : 'tab'} onClick={() => setTab('settings')}>
+          Settings
+        </button>
       </div>
 
       {error && <p className="error no-print">{error}</p>}
@@ -203,6 +208,7 @@ function ReviewQueue({ onLocked }) {
         <EventManager key={tab} type={tab} items={items} onError={handleError} />
       )}
       {tab === 'qr' && <QrSign />}
+      {tab === 'settings' && <SettingsPanel onError={handleError} />}
       {TABS.some((t) => t.status === tab) && shown.length === 0 && <p className="empty">Nothing here right now.</p>}
 
       <div className="review-list">
@@ -241,6 +247,85 @@ function ReviewQueue({ onLocked }) {
         ))}
       </div>
     </section>
+  )
+}
+
+// The kill switch. The same two switches are checkboxes in the Sheet's Settings tab.
+const SWITCHES = [
+  {
+    key: 'galleryOnline',
+    label: 'Gallery online',
+    on: 'The gallery is showing photos to the public.',
+    off: 'The gallery is offline. Visitors see a message instead of photos.',
+    turnOff: 'Take gallery offline',
+    turnOn: 'Put gallery back online',
+  },
+  {
+    key: 'takingPhotos',
+    label: 'Taking photos',
+    on: 'Visitors can share photos with the photo form and QR codes.',
+    off: 'The photo form and QR codes are closed to new photos.',
+    turnOff: 'Stop taking photos',
+    turnOn: 'Start taking photos',
+  },
+]
+
+function SettingsPanel({ onError }) {
+  const { settings, setSettings } = useEvents()
+  const [confirmKey, setConfirmKey] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState(null)
+
+  // Turning a switch off takes a second click, like Delete. Turning it back on doesn't.
+  async function toggle(key) {
+    const on = settings[key]
+    if (on && confirmKey !== key) return setConfirmKey(key)
+    setConfirmKey(null)
+    setBusy(true)
+    setMessage(null)
+    try {
+      setSettings(await setSetting(key, !on))
+    } catch (err) {
+      if (err.code === 'unauthorized') onError(err)
+      else setMessage(err.message || 'Something went wrong.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="events-manager">
+      <p className="lead">
+        Take the gallery offline quickly, for example after a copyright complaint, a photo with private information,
+        a hacked account or a flood of inappropriate photos. Turn it back on here when it's sorted out.
+      </p>
+      <ul className="event-list">
+        {SWITCHES.map((s) => {
+          const on = settings[s.key]
+          return (
+            <li key={s.key}>
+              <div>
+                <strong>{s.label}</strong>
+                <span>{on ? 'On' : 'Off'}</span>
+                <p className="hint">{on ? s.on : s.off}</p>
+              </div>
+              <button
+                className={confirmKey === s.key ? 'button button-danger' : on ? 'button button-outline' : 'button'}
+                disabled={busy}
+                onClick={() => toggle(s.key)}
+              >
+                {confirmKey === s.key ? 'Click again to confirm' : on ? s.turnOff : s.turnOn}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+      {message && <p className="error">{message}</p>}
+      <p className="hint">
+        The same switches are in the Google Sheet's Settings tab. Untick a box there to turn it off, even if you can't
+        sign in here.
+      </p>
+    </div>
   )
 }
 
