@@ -62,6 +62,7 @@ const FR_REVIEW_HEADERS = FR_HEADERS.slice(6, 15) // Total Score .. Raw Gemini R
 const FR_REQUIRED = ['Name', 'Community Member(s)', 'Submission', 'Edited Text', 'Approve for Website', 'Website Status', 'Held Back', 'ID']
 const FR_UNPUBLISHABLE = ['error', 'parse_error', 'no_submission']
 const FR_MAX_PHOTOS = 3
+const FR_MAX_PREVIEW_BYTES = 3 * 1024 * 1024 // larger photos are previewed as a smaller thumbnail
 const FR_MAX_EDIT_LENGTH = 20000
 const FR_WAITING = 'Waiting for staff approval'
 
@@ -78,6 +79,9 @@ const FR_WIX_FIELDS = {
   photo: 'photo',                    // first photo ('' turns photos off)
   gallery: '',                       // 'gallery' sends every photo to a Media Gallery field
 }
+// A story published without a photo gets the image in the FR_DEFAULT_PHOTO_URL script
+// property, if one is set: the link of an image uploaded to the Wix Media Manager.
+// Without it, the story is published with no photo.
 
 // ===== The Gemini prompt =====
 const FR_REVIEW_PROMPT = `You are the first reader for community-submitted stories on the South-View Cemetery website. South-View was founded in 1886 by formerly enslaved African Americans, and its stories honor people buried there. Many submissions are written by family members, not professional writers. Your job is to help each story meet the site's standards while preserving the writer's voice and facts.
@@ -425,6 +429,7 @@ function firstReaderPost(body) {
     case 'firstReaderReopen': return { story: frDecide(id, 'reopen') }
     case 'firstReaderSaveEdit': return { story: frSaveEdit(id, body.editedText) }
     case 'firstReaderRetry': return { story: frRetry(id) }
+    case 'firstReaderPhoto': return frPhoto(body.fileId)
   }
   frFail('Unknown First Reader action.')
 }
@@ -444,7 +449,7 @@ function frList() {
   const stories = t.values
     .map((row, i) => frStory(t, row, i + 2))
     .filter((s) => s.id && (s.submission || s.name))
-  return { stories: stories, sheetUrl: sheet.getParent().getUrl() + '#gid=' + sheet.getSheetId() }
+  return { stories: stories, sheetUrl: sheet.getParent().getUrl() + '#gid=' + sheet.getSheetId(), defaultPhotoUrl: frDefaultPhotoUrl() }
 }
 
 function frDecide(id, decision) {
@@ -732,6 +737,9 @@ function frPublishRow(sheet, t, rowNumber) {
     if (urls.length) {
       data[FR_WIX_FIELDS.photo] = urls[0]
       if (FR_WIX_FIELDS.gallery) data[FR_WIX_FIELDS.gallery] = urls.map((u) => ({ type: 'image', src: u, title: members }))
+    } else if (frDefaultPhotoUrl()) {
+      data[FR_WIX_FIELDS.photo] = frDefaultPhotoUrl()
+      notes.push('default photo used')
     }
   }
 
@@ -742,6 +750,32 @@ function frPublishRow(sheet, t, rowNumber) {
     status.setValue('Wix error: ' + err.message)
     approveBox.uncheck() // so staff can simply approve again
   }
+}
+
+function frDefaultPhotoUrl() {
+  const url = String(frProps().getProperty('FR_DEFAULT_PHOTO_URL') || '').trim()
+  return /^https:\/\//.test(url) ? url : ''
+}
+
+// One story photo for the dashboard, as a data URL, so photos stay private in Drive.
+// Only photos linked from the Review Sheet can be fetched.
+function frPhoto(fileId) {
+  fileId = String(fileId || '')
+  const t = frTable(frSheet())
+  const col = t.col('Photos')
+  const linked = col >= 0 && t.values.some((row) => frPhotoIds(row[col]).indexOf(fileId) >= 0)
+  if (!fileId || !linked) frFail('That photo is not linked from the Review Sheet.', 'not_found')
+  let file
+  try {
+    file = DriveApp.getFileById(fileId)
+  } catch (err) {
+    frFail("Can't open that photo in Drive. It may have been deleted, or this account can't see it.", 'not_found')
+  }
+  if (!/^image\//.test(file.getMimeType())) frFail('That file is not an image.', 'not_found')
+  let blob = file.getSize() > FR_MAX_PREVIEW_BYTES ? file.getThumbnail() : file.getBlob()
+  // Browsers can't show some phone formats, such as HEIC.
+  if (['image/jpeg', 'image/png', 'image/gif', 'image/webp'].indexOf(blob.getContentType()) < 0) blob = blob.getAs('image/jpeg')
+  return { dataUrl: 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes()) }
 }
 
 function frPhotoIds(text) {

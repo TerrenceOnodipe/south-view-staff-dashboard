@@ -21,6 +21,11 @@ one added line (step 3).
 | **Edit this text** | Type in **Edited Text** | Changes what will be published. |
 | **Run the AI review again** | Run `frRetryFailedReviews` in the editor | Reviews again a story whose AI review failed. |
 
+Each story card shows the family's first uploaded photo. Photos stay private in Drive: the
+script sends them only to signed-in staff, and only photos linked from the Review Sheet. A
+story without a photo shows a placeholder, or the default photo when `FR_DEFAULT_PHOTO_URL`
+is set, so staff see what the website will show.
+
 Both places read and write the same rows, so a decision made in one shows in the other on
 the next refresh. The dashboard shows every column of the Sheet: the story as sent, the
 edited text, score, decision, facts to verify, changes made, feedback, score breakdown,
@@ -51,6 +56,7 @@ A published story isn't taken off the website by unticking a box. Delete it in t
    | `WIX_API_KEY` | A Wix API key with **Wix Data** and **Manage Site Media** turned on. |
    | `WIX_SITE_ID` | The ID after `/dashboard/` in the Wix dashboard's address. |
    | `FR_STAFF_EMAILS` | Optional. Comma-separated emails allowed to review stories. Without it, the dashboard's `STAFF_EMAILS` list is used. |
+   | `FR_DEFAULT_PHOTO_URL` | Optional. The image used on the website for stories sent without a photo. Upload it in Wix (**Media Manager → Upload**), then copy its link (it starts with `https://static.wixstatic.com/`). Without it, those stories are published with no photo. |
 
    `GEMINI_API_KEY`, `GOOGLE_CLIENT_ID` and `STAFF_EMAILS` are shared with the gallery and
    are already there.

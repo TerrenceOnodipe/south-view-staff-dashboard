@@ -3,6 +3,23 @@
 // sends for one row of the Review Sheet.
 const KEY = 'south-view-first-reader-demo'
 
+// A drawing standing in for an uploaded family photo (sepia porch portrait).
+const PORCH_PHOTO =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 375">
+  <defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9d8b9"/><stop offset="1" stop-color="#b99568"/></linearGradient></defs>
+  <rect width="300" height="375" fill="url(#s)"/>
+  <rect x="0" y="250" width="300" height="125" fill="#8a6a45"/>
+  <rect x="20" y="40" width="14" height="210" fill="#a7865c"/><rect x="266" y="40" width="14" height="210" fill="#a7865c"/>
+  <rect x="0" y="30" width="300" height="16" fill="#7a5c3b"/>
+  <circle cx="150" cy="150" r="34" fill="#6b4f33"/>
+  <rect x="112" y="118" width="76" height="12" rx="4" fill="#4a3522"/><rect x="128" y="96" width="44" height="26" rx="6" fill="#4a3522"/>
+  <path d="M96 290c4-58 26-92 54-92s50 34 54 92z" fill="#5a4129"/>
+  <rect x="70" y="282" width="160" height="16" fill="#6b4f33"/>
+</svg>`)
+
+const DEMO_PHOTOS = { 'demo-photo-1': PORCH_PHOTO }
+
 const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString()
 
 const breakdown = (s, t, p) =>
@@ -36,7 +53,7 @@ function seed() {
       status: 'pending',
       published: false,
       websiteStatus: 'Waiting for staff approval',
-      photos: [],
+      photos: [{ fileId: 'demo-photo-1', url: '#' }],
     },
     {
       id: 'demo-2',
@@ -155,7 +172,7 @@ async function change(id, fn) {
 
 export async function listStories() {
   await wait()
-  return { stories: read(), sheetUrl: '' }
+  return { stories: read(), sheetUrl: '', defaultPhotoUrl: '' }
 }
 
 export const approveStory = (id) =>
@@ -207,6 +224,14 @@ export const retryReview = (id) =>
       rawReply: '{"decision":"auto_edit", "...": "sample reply"}',
     })
   })
+
+// Demo photos are bundled drawings, standing in for photos families upload.
+export async function loadPhoto(fileId) {
+  await wait()
+  const photo = DEMO_PHOTOS[fileId]
+  if (!photo) throw new Error('That photo is not linked from the Review Sheet.')
+  return photo
+}
 
 export async function resetDemoStories() {
   write(seed())

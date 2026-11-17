@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { isDemo } from '../data/store'
 import { formatDate } from '../components'
-import { approveStory, holdStory, listStories, reopenStory, resetDemoStories, retryReview, saveEdit } from './api'
+import { approveStory, holdStory, listStories, loadPhoto, reopenStory, resetDemoStories, retryReview, saveEdit } from './api'
+import defaultPhoto from './default-photo.svg'
 import './first-reader.css'
 
 // First Reader: community stories that families submit through the Google Form. Gemini
@@ -26,6 +27,8 @@ const FAILED = ['error', 'parse_error', 'no_submission']
 export default function FirstReader({ onError }) {
   const [stories, setStories] = useState(null)
   const [sheetUrl, setSheetUrl] = useState('')
+  // South-View's default image for stories without a photo (FR_DEFAULT_PHOTO_URL), if set.
+  const [defaultPhotoUrl, setDefaultPhotoUrl] = useState('')
   const [filter, setFilter] = useState('pending')
   const [search, setSearch] = useState('')
   const [message, setMessage] = useState(null)
@@ -43,6 +46,7 @@ export default function FirstReader({ onError }) {
       const data = await listStories()
       setStories(data.stories)
       setSheetUrl(data.sheetUrl || '')
+      setDefaultPhotoUrl(data.defaultPhotoUrl || '')
     } catch (err) {
       setStories((s) => s ?? [])
       handleError(err)
@@ -114,14 +118,14 @@ export default function FirstReader({ onError }) {
 
       <div className="review-list">
         {shown.map((story) => (
-          <StoryCard key={story.id} story={story} onChange={replace} onError={handleError} />
+          <StoryCard key={story.id} story={story} defaultPhotoUrl={defaultPhotoUrl} onChange={replace} onError={handleError} />
         ))}
       </div>
     </div>
   )
 }
 
-function StoryCard({ story, onChange, onError }) {
+function StoryCard({ story, defaultPhotoUrl, onChange, onError }) {
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -159,7 +163,8 @@ function StoryCard({ story, onChange, onError }) {
   return (
     <article className="review-card fr-card">
       <div className="fr-card-top">
-        <div>
+        <StoryPhoto story={story} defaultPhotoUrl={defaultPhotoUrl} />
+        <div className="fr-who">
           <p className="fr-kicker">{story.personTitle || 'Community story'}</p>
           <h2 className="fr-person">{story.members || <em>No name given</em>}</h2>
           <p className="fr-by">
@@ -243,11 +248,15 @@ function StoryCard({ story, onChange, onError }) {
           <div>
             <dt>Photos</dt>
             <dd>
-              {story.photos.map((p, i) => (
-                <a key={p.fileId} href={p.url} target="_blank" rel="noreferrer" className="fr-photo-link">
-                  Photo {i + 1}
-                </a>
-              ))}
+              {story.photos.map((p, i) =>
+                p.url.startsWith('https://') ? (
+                  <a key={p.fileId} href={p.url} target="_blank" rel="noreferrer" className="fr-photo-link">
+                    Photo {i + 1} in Drive
+                  </a>
+                ) : (
+                  <span key={p.fileId} className="fr-photo-link">Photo {i + 1}</span>
+                ),
+              )}
               <p className="fr-small">Approved stories send the first {Math.min(3, story.photos.length)} to the website. To leave one off, delete its link in the Sheet's Photos column first.</p>
             </dd>
           </div>
@@ -291,6 +300,52 @@ function StoryCard({ story, onChange, onError }) {
         )}
       </div>
     </article>
+  )
+}
+
+// The story's first photo, loaded privately from Drive through the script. A story with
+// no photo, or whose photo can't be loaded, shows the default image the website will use.
+function StoryPhoto({ story, defaultPhotoUrl }) {
+  const fileId = story.photos[0]?.fileId
+  const [src, setSrc] = useState(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    if (!fileId) return
+    let cancelled = false
+    setSrc(null)
+    setFailed(false)
+    loadPhoto(fileId)
+      .then((url) => !cancelled && setSrc(url))
+      .catch(() => !cancelled && setFailed(true))
+    return () => {
+      cancelled = true
+    }
+  }, [fileId])
+
+  const fallback = defaultPhotoUrl || defaultPhoto
+  let caption = null
+  if (!fileId) caption = defaultPhotoUrl ? 'No photo shared. The website will show this default photo.' : null
+  else if (failed) caption = "This photo couldn't be loaded. Open it from the link below."
+  else if (story.photos.length > 1) caption = `1 of ${story.photos.length} photos`
+
+  return (
+    <figure className="fr-photo">
+      {fileId && !src && !failed ? (
+        <div className="fr-photo-img fr-photo-loading" aria-label="Loading photo" />
+      ) : (
+        <img
+          className="fr-photo-img"
+          src={fileId && !failed ? src : fallback}
+          alt={fileId && !failed ? `Photo of ${story.members || 'the person in this story'}` : 'No photo shared'}
+          referrerPolicy="no-referrer"
+          onError={(e) => {
+            if (e.currentTarget.src !== new URL(defaultPhoto, location.href).href) e.currentTarget.src = defaultPhoto
+          }}
+        />
+      )}
+      {caption && <figcaption>{caption}</figcaption>}
+    </figure>
   )
 }
 

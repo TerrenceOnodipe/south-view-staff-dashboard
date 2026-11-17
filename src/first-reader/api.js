@@ -34,4 +34,6 @@ export const holdStory = isDemo ? demo.holdStory : story('firstReaderHold')
 export const reopenStory = isDemo ? demo.reopenStory : story('firstReaderReopen')
 export const retryReview = isDemo ? demo.retryReview : story('firstReaderRetry')
 export const saveEdit = isDemo ? demo.saveEdit : (id, editedText) => story('firstReaderSaveEdit')(id, { editedText })
+// A story's photo stays private in Drive; the script sends it to signed-in staff as a data URL.
+export const loadPhoto = isDemo ? demo.loadPhoto : async (fileId) => (await call('firstReaderPhoto', { fileId })).dataUrl
 export const resetDemoStories = demo.resetDemoStories
