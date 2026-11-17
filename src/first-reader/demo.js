@@ -172,7 +172,7 @@ async function change(id, fn) {
 
 export async function listStories() {
   await wait()
-  return { stories: read(), sheetUrl: '', defaultPhotoUrl: '' }
+  return { stories: read(), sheetUrl: '', defaultPhoto: null }
 }
 
 export const approveStory = (id) =>

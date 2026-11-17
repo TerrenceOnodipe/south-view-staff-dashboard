@@ -80,8 +80,9 @@ const FR_WIX_FIELDS = {
   gallery: '',                       // 'gallery' sends every photo to a Media Gallery field
 }
 // A story published without a photo gets the image in the FR_DEFAULT_PHOTO_URL script
-// property, if one is set: the link of an image uploaded to the Wix Media Manager.
-// Without it, the story is published with no photo.
+// property, if one is set: a Google Drive link to an image (copied to Wix the first time
+// it's used), or an image link from the Wix Media Manager. Without it, the story is
+// published with no photo.
 
 // ===== The Gemini prompt =====
 const FR_REVIEW_PROMPT = `You are the first reader for community-submitted stories on the South-View Cemetery website. South-View was founded in 1886 by formerly enslaved African Americans, and its stories honor people buried there. Many submissions are written by family members, not professional writers. Your job is to help each story meet the site's standards while preserving the writer's voice and facts.
@@ -449,7 +450,7 @@ function frList() {
   const stories = t.values
     .map((row, i) => frStory(t, row, i + 2))
     .filter((s) => s.id && (s.submission || s.name))
-  return { stories: stories, sheetUrl: sheet.getParent().getUrl() + '#gid=' + sheet.getSheetId(), defaultPhotoUrl: frDefaultPhotoUrl() }
+  return { stories: stories, sheetUrl: sheet.getParent().getUrl() + '#gid=' + sheet.getSheetId(), defaultPhoto: frDefaultPhoto() }
 }
 
 function frDecide(id, decision) {
@@ -737,9 +738,13 @@ function frPublishRow(sheet, t, rowNumber) {
     if (urls.length) {
       data[FR_WIX_FIELDS.photo] = urls[0]
       if (FR_WIX_FIELDS.gallery) data[FR_WIX_FIELDS.gallery] = urls.map((u) => ({ type: 'image', src: u, title: members }))
-    } else if (frDefaultPhotoUrl()) {
-      data[FR_WIX_FIELDS.photo] = frDefaultPhotoUrl()
-      notes.push('default photo used')
+    } else if (frDefaultPhoto()) {
+      try {
+        data[FR_WIX_FIELDS.photo] = frDefaultWixPhotoUrl()
+        notes.push('default photo used')
+      } catch (err) {
+        notes.push('default photo skipped (' + err.message + ')')
+      }
     }
   }
 
@@ -752,9 +757,32 @@ function frPublishRow(sheet, t, rowNumber) {
   }
 }
 
-function frDefaultPhotoUrl() {
-  const url = String(frProps().getProperty('FR_DEFAULT_PHOTO_URL') || '').trim()
-  return /^https:\/\//.test(url) ? url : ''
+// FR_DEFAULT_PHOTO_URL as { fileId } for a Drive image, { url } for an image link, or null.
+function frDefaultPhoto() {
+  const value = String(frProps().getProperty('FR_DEFAULT_PHOTO_URL') || '').trim()
+  if (!value) return null
+  const ids = frPhotoIds(value)
+  if (ids.length) return { fileId: ids[0] }
+  if (/^[\w-]{25,}$/.test(value)) return { fileId: value }
+  return /^https:\/\//.test(value) ? { url: value } : null
+}
+
+// The default photo's link for Wix. A Drive image is copied to Wix once and remembered.
+function frDefaultWixPhotoUrl() {
+  const photo = frDefaultPhoto()
+  if (!photo) return ''
+  if (photo.url) return photo.url
+  const key = 'fr_default_wix_' + photo.fileId
+  const saved = frProps().getProperty(key)
+  if (saved) return saved
+  let url
+  try {
+    url = frUploadPhotoToWix(photo.fileId, 'South-View default photo')
+  } catch (err) {
+    return frSharedDrivePhotoUrl(photo.fileId) // not remembered, so the Wix copy is tried again next time
+  }
+  frProps().setProperty(key, url)
+  return url
 }
 
 // One story photo for the dashboard, as a data URL, so photos stay private in Drive.
@@ -763,7 +791,8 @@ function frPhoto(fileId) {
   fileId = String(fileId || '')
   const t = frTable(frSheet())
   const col = t.col('Photos')
-  const linked = col >= 0 && t.values.some((row) => frPhotoIds(row[col]).indexOf(fileId) >= 0)
+  const def = frDefaultPhoto()
+  const linked = (def && def.fileId === fileId) || (col >= 0 && t.values.some((row) => frPhotoIds(row[col]).indexOf(fileId) >= 0))
   if (!fileId || !linked) frFail('That photo is not linked from the Review Sheet.', 'not_found')
   let file
   try {
