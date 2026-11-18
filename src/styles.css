@@ -252,3 +252,7 @@ select {
 .event-form { display: flex; flex-wrap: wrap; gap: 8px; }
 .event-form input { font: 400 1rem var(--sans); padding: 10px 12px; border: 1px solid #cfc7c7; border-radius: 6px; min-width: 0; flex: 1 1 220px; }
 .events-manager > .button { margin-top: 4px; }
+
+/* Password sign-in (demo copy without Google sign-in) */
+.password-form { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+.password-form input { font: 400 1rem var(--sans); padding: 10px 12px; border: 1px solid #cfc7c7; border-radius: 6px; min-width: 0; flex: 0 1 260px; }

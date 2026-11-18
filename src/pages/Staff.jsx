@@ -39,9 +39,15 @@ export default function Staff() {
 // Live mode signs staff in with their Google account, checked against the STAFF_EMAILS
 // allowlist on the script. Demo mode has no backend to check against, so it skips
 // straight through with one click, the same "not real security" spirit as the PIN it replaced.
+// Without a Google client ID (this demo copy of the dashboard), staff sign in with a
+// password instead. The script checks it against its TEST_PASSCODE property.
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+const usePassword = !isDemo && !GOOGLE_CLIENT_ID
+
 function GoogleGate({ onUnlock }) {
   const [message, setMessage] = useState(null)
   const [checking, setChecking] = useState(false)
+  const [password, setPassword] = useState('')
   const buttonRef = useRef(null)
 
   const trySignIn = useCallback(
@@ -49,7 +55,7 @@ function GoogleGate({ onUnlock }) {
       setChecking(true)
       try {
         if (await unlockStaff(credential)) return onUnlock()
-        setMessage("That Google account isn't on the staff list.")
+        setMessage(usePassword ? "That password isn't right." : "That Google account isn't on the staff list.")
       } catch (err) {
         setMessage(err.code ? err.message : "Couldn't reach the server. Check your connection and try again.")
       }
@@ -59,12 +65,8 @@ function GoogleGate({ onUnlock }) {
   )
 
   useEffect(() => {
-    if (isDemo) return
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-    if (!clientId) {
-      setMessage('Google sign-in is not configured yet (missing VITE_GOOGLE_CLIENT_ID).')
-      return
-    }
+    if (isDemo || usePassword) return
+    const clientId = GOOGLE_CLIENT_ID
     const script = document.createElement('script')
     script.src = 'https://accounts.google.com/gsi/client'
     script.async = true
@@ -88,7 +90,30 @@ function GoogleGate({ onUnlock }) {
           {checking ? 'Loading…' : 'Continue as staff (demo)'}
         </button>
       ) : (
-        <div ref={buttonRef} className="google-signin-button" />
+        usePassword ? (
+          <form
+            className="password-form"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (password) trySignIn(password)
+            }}
+          >
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Staff password"
+              aria-label="Staff password"
+              autoComplete="current-password"
+              autoFocus
+            />
+            <button className="button" type="submit" disabled={checking || !password}>
+              {checking ? 'Checking…' : 'Sign in'}
+            </button>
+          </form>
+        ) : (
+          <div ref={buttonRef} className="google-signin-button" />
+        )
       )}
       {message && <p className="error">{message}</p>}
       {isDemo && (
